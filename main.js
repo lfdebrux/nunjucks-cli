@@ -21,6 +21,7 @@ const { argv } = require('yargs')
 	.option('path', {
 		alias: 'p',
 		string: true,
+		array: true,
 		requiresArg: true,
 		nargs: 1,
 		describe: 'Path where templates live',
@@ -52,7 +53,7 @@ const { argv } = require('yargs')
 		describe: 'Nunjucks options file',
 	})
 
-const inputDir = resolve(process.cwd(), argv.path) || ''
+const inputDirs = argv.path.map(p => resolve(process.cwd(), p)) || ['']
 const outputDir = argv.out || ''
 
 const context = argv._[1] ? JSON.parse(readFileSync(argv._[1], 'utf8')) : {}
@@ -64,7 +65,8 @@ const nunjucksOptions = argv.options
 	? JSON.parse(readFileSync(argv.options, 'utf8'))
 	: { trimBlocks: true, lstripBlocks: true, noCache: true }
 
-const nunjucksEnv = nunjucks.configure(inputDir, nunjucksOptions)
+const nunjucksLoader = new nunjucks.FileSystemLoader(inputDirs)
+const nunjucksEnv = new nunjucks.Environment(nunjucksLoader, nunjucksOptions)
 
 const render = (/** @type {string[]} */ files) => {
 	for (const file of files) {
@@ -85,7 +87,7 @@ const render = (/** @type {string[]} */ files) => {
 }
 
 /** @type {glob.IOptions} */
-const globOptions = { strict: true, cwd: inputDir, ignore: '**/_*.*', nonull: true }
+const globOptions = { strict: true, cwd: inputDirs[0], ignore: '**/_*.*', nonull: true }
 
 // Render the files given a glob pattern (except the ones starting with "_")
 glob(argv._[0], globOptions, (err, files) => {
@@ -99,7 +101,7 @@ if (argv.watch) {
 	const templates = []
 
 	/** @type {chokidar.WatchOptions} */
-	const watchOptions = { persistent: true, cwd: inputDir }
+	const watchOptions = { persistent: true, cwd: inputDirs[0] }
 	const watcher = chokidar.watch(argv._[0], watchOptions)
 
 	watcher.on('ready', () => console.log(chalk.gray('Watching templates...')))
