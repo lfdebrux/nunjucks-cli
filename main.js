@@ -6,6 +6,7 @@ const nunjucks = require('nunjucks')
 const chokidar = require('chokidar')
 const glob = require('glob')
 const mkdirp = require('mkdirp')
+const path = require('path')
 const chalk = require('chalk').default
 
 const { argv } = require('yargs')
@@ -45,6 +46,11 @@ const { argv } = require('yargs')
 		default: 'html',
 		describe: 'Extension of the rendered files',
 	})
+	.option('original-extension', {
+		string: true,
+		requiresArg: true,
+		describe: 'Extension of the template files',
+	})
 	.option('options', {
 		alias: 'O',
 		string: true,
@@ -74,7 +80,12 @@ const render = (/** @type {string[]} */ files) => {
 		// https://mozilla.github.io/nunjucks/api.html#asynchronous-support
 		const res = nunjucksEnv.render(file, context)
 
-		let outputFile = file.replace(/\.\w+$/, `.${argv.extension}`)
+		let oldExt = argv.originalExtension || path.extname(file)
+		let outputFile = path.format({
+			dir: dirname(file),
+			name: basename(file, oldExt),
+			ext: `.${argv.extension}`
+		})
 
 		if (outputDir) {
 			outputFile = resolve(outputDir, outputFile)
